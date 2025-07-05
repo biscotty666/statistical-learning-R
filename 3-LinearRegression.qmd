@@ -1,0 +1,276 @@
+---
+title: "Linear Regression"
+format: 
+  html:
+    toc: true
+    keep-md: true
+  gfm: default
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(paged.print = FALSE)
+```
+
+```{r}
+library(MASS)
+library(ISLR2)
+```
+
+```{r}
+head(Boston)
+```
+
+# Simple linear regression
+
+```{r}
+lm_fit <- lm(medv ~ lstat, data = Boston)
+```
+
+```{r}
+lm_fit
+summary(lm_fit)
+names(lm_fit)
+coef(lm_fit)
+confint(lm_fit)
+```
+
+## Confidence intervals and prediction intervals
+
+```{r}
+predict(lm_fit, data.frame(lstat = (c(5, 10, 15))),
+        interval = "confidence")
+```
+
+```{r}
+predict(lm_fit, data.frame(lstat = (c(5, 10, 15))),
+        interval = "prediction")
+```
+
+These are 95% conficence intervals for various values of `lstat`.
+
+```{r}
+with(lm_fit$model, plot(lstat, medv, 
+                        col = "green",
+                        pch = "+"))
+abline(lm_fit, lwd = 3, col = "red")
+```
+
+```{r}
+plot (1:20 , 1:20, pch = 1:20)
+```
+
+```{r}
+par(mfrow = c(2,2), mar = rep(2,4))
+plot(lm_fit)
+```
+
+```{r}
+plot(predict(lm_fit), residuals(lm_fit))
+plot(predict(lm_fit), rstudent(lm_fit))
+```
+
+Residual plots show non-linearity. Leverage statistics:
+
+```{r}
+plot(hatvalues(lm_fit))
+```
+
+```{r}
+which.max(hatvalues(lm_fit))
+```
+
+# Multiple linear regression
+
+```{r}
+lm_fit <- lm(medv ~ lstat + age, data = Boston)
+summary(lm_fit)
+```
+
+```{r}
+lm_fit <- lm(medv ~ ., data = Boston)
+summary(lm_fit)
+```
+
+```{r}
+summary(lm_fit)$r.sq
+summary(lm_fit)$sigma  # RSE
+```
+
+```{r}
+library(car)
+vif(lm_fit)
+```
+
+Remove a variable
+
+```{r}
+lm_fit1 <- update(lm_fit, ~ . - age - indus)
+summary(lm_fit1)
+```
+
+```{r}
+plot(predict(lm_fit), residuals(lm_fit))
+plot(predict(lm_fit1), residuals(lm_fit1))
+```
+
+# Interaction terms
+
+```{r}
+summary(lm(medv ~ lstat * age, data = Boston))
+```
+
+# Non-linear transformations of predictors
+
+```{r}
+lm_fit2 <- lm(medv ~ lstat + I(lstat^2), data = Boston)
+summary(lm_fit2)
+```
+
+compare the quadradic fit with the linear fit
+
+```{r}
+lm_fit <- lm(medv ~ lstat, data = Boston)
+anova(lm_fit, lm_fit2)
+```
+
+F and p-values show the quadratic model to be far superior.
+
+```{r}
+par(mfrow = c(2,2), mar = rep(1,4))
+plot(lm_fit2)
+```
+
+No discernable pattern in residuals
+
+Higher order polynomials
+
+```{r}
+lm_fit5 <- lm(medv ~ poly(lstat, 5), data = Boston)
+lm_fit6 <- lm(medv ~ poly(lstat, 6), data = Boston)
+summary(lm_fit5)
+summary(lm_fit6)
+```
+
+No improvement after $x^5$.
+
+Not restricted to polynomials.
+
+```{r}
+summary(lm(medv ~ log(rm), data = Boston))
+```
+
+# Qualitative predictors
+
+```{r}
+head(Carseats)
+```
+
+```{r}
+lm_fit <- lm(Sales ~ . + Income:Advertising + Price:Age,
+             data = Carseats)
+summary(lm_fit)
+```
+
+The default coding used for the dummy categorical variables
+
+```{r}
+with(Carseats, contrasts(ShelveLoc))
+```
+
+8.  This question involves the use of simple linear regression on the Auto data set.
+
+<!-- -->
+
+(a) Use the lm() function to perform a simple linear regression with mpg as the response and horsepower as the predictor. Use the summary() function to print the results. Comment on the output. For example:
+    i.  Is there a relationship between the predictor and the response?
+    ii. How strong is the relationship between the predictor and the response?
+    iii. Is the relationship between the predictor and the response positive or negative?
+    iv. What is the predicted mpg associated with a horsepower of 98? What are the associated 95 % confidence and prediction intervals?
+(b) Plot the response and the predictor. Use the abline() function to display the least squares regression line.
+(c) Use the plot() function to produce diagnostic plots of the least squares regression fit. Comment on any problems you see with the fit.
+```{r}
+lm_fit <- lm(mpg ~ horsepower, data = Auto)
+summary(lm_fit)
+```
+
+```{r}
+predict(lm_fit, data.frame(horsepower = 98),
+        interval = "confidence")
+```
+
+```{r}
+predict(lm_fit, data.frame(horsepower = 98),
+        interval = "prediction")
+```
+
+```{r}
+with(lm_fit$model, plot(horsepower, mpg, 
+                        col = "green",
+                        pch = "+"))
+abline(lm_fit, lwd = 3, col = "red")
+```
+
+9. This question involves the use of multiple linear regression on the Auto data set.
+  (a) Produce a scatterplot matrix which includes all of the variables in the data set.
+
+
+```{r}
+plot(Auto)
+```
+
+  (b) Compute the matrix of correlations between the variables using the function cor(). You will need to exclude the name variable, cor() which is qualitative.
+
+
+```{r}
+Auto |> 
+  dplyr::select(-name) |> 
+  cor()
+```
+
+  (c) Use the lm() function to perform a multiple linear regressionwith mpg as the response and all other variables except name asthe predictors. Use the summary() function to print the results.
+  Comment on the output. For instance:
+    i. Is there a relationship between the predictors and the response?
+    ii. Which predictors appear to have a statistically significant relationship to the response?
+    iii. What does the coeﬀicient for the year variable suggest?
+
+
+```{r}
+lm_fit <- lm(mpg ~ . - name, data = Auto)
+summary(lm_fit)
+```
+
+```{r}
+lm(mpg ~ weight + year + origin, data = Auto) |> 
+  summary()
+```
+
+
+  (d) Use the plot() function to produce diagnostic plots of the linear regression fit. Comment on any problems you see with the fit. Do the residual plots suggest any unusually large outliers? Does the leverage plot identify any observations with unusually high leverage?
+
+
+```{r}
+plot(predict(lm_fit), residuals(lm_fit))
+```
+
+```{r}
+plot(hatvalues(lm_fit))
+```
+
+  (e) Use the * and : symbols to fit linear regression models with interaction effects. Do any interactions appear to be statistically significant?
+
+```{r}
+lm(mpg ~ cylinders:year, data = Auto) |> summary()
+```
+
+  (f) Try a few different transformations of the variables, such as log(X), √X, X 2 . Comment on your findings.
+
+
+
+
+
+
+
+
+
+
+
