@@ -1,7 +1,7 @@
 {
   description = "A basic flake with a shell";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/25.05";
     systems.url = "github:nix-systems/default";
     flake-utils = {
       url = "github:numtide/flake-utils";
@@ -18,14 +18,27 @@
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
+        #pkgs = nixpkgs.legacyPackages.${system};
+      pkgs = import nixpkgs {
+        inherit system;
+        config.allowUnfree = true;
+      };
         db = devDB.outputs.packages.${system};
+        myvscode = pkgs.vscode-with-extensions.override {
+          vscodeExtensions = (with pkgs.vscode-extensions; [
+          enkia.tokyo-night
+          sainnhe.gruvbox-material
+          vscodevim.vim
+          reditorsupport.r
+        ]);
+      };
       in
       {
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = [ pkgs.bashInteractive ];
           buildInputs = with pkgs; [
             R
+            myvscode
             postgresql_15
             db.start-database
             db.stop-database
@@ -37,13 +50,22 @@
             pandoc
             texlive.combined.scheme-full
             rstudio
+            radianWrapper
             (with rPackages; [
               quarto
+              languageserver
+              httpgd
+              lintr
               pagedown
+              e1071
               tidyverse
+              scatterPlotMatrix
+              ggfortify
               bench
               car
               desc
+              leaps
+              glmnet
               downlit
               ggbeeswarm
               gapminder
@@ -59,6 +81,8 @@
               palmerpenguins
               profvis
               R6
+              pls
+              GGally
               dbplyr
               RPostgres
               Rcpp
