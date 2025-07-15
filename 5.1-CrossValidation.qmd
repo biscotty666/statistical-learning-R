@@ -1,0 +1,228 @@
+---
+title: "Resampling - Cross Validation"
+format: 
+  html:
+    toc: true
+    keep-md: true
+  gfm: default
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(paged.print = FALSE)
+options(digits = 4)
+```
+
+```{r}
+#| message: false
+library(ISLR2)
+library(ggplot2)
+```
+
+# Validation Set Approach
+
+Randomly divide data into training and validation sets. The validation set provides and estimate of the test error rate.
+
+```{r}
+library(ISLR2)
+```
+
+Randomly obtain 196 observations from the original 392.
+
+```{r}
+set.seed(1)
+train <- sample(392, 196)
+```
+
+```{r}
+lm_fit_linear <- lm(
+  mpg ~ horsepower,
+  data = Auto,
+  subset = train
+)
+```
+
+Estimated test MSE for linear regression.
+
+```{r}
+mse <- function(dat, var, mod) {
+  mean((var - predict(mod, dat))[-train]^2)
+}
+```
+
+```{r}
+mse(Auto, Auto$mpg, lm_fit_linear)
+```
+
+```{r}
+mean((Auto$mpg - predict(lm_fit_linear, Auto))[-train]^2)
+```
+
+Errors for cubic and quatratic
+
+```{r}
+lm_fit_quad <- lm(
+  mpg ~ poly(horsepower, 2),
+  data = Auto,
+  subset = train
+)
+lm_fit_cubic <- lm(
+  mpg ~ poly(horsepower, 3),
+  data = Auto,
+  subset = train
+)
+mse(Auto, Auto$mpg, lm_fit_linear)
+mse(Auto, Auto$mpg, lm_fit_quad)
+mse(Auto, Auto$mpg, lm_fit_cubic)
+```
+
+Using a different training set:
+
+```{r}
+set.seed(2)
+train <- sample(392, 196)
+lm_fit_linear <- lm(mpg ~ horsepower, data = Auto, subset = train)
+lm_fit_quad <- lm(mpg ~ poly(horsepower, 2), data = Auto, subset = train)
+lm_fit_cubic <- lm(mpg ~ poly(horsepower, 3), data = Auto, subset = train)
+mse(Auto, Auto$mpg, lm_fit_linear)
+mse(Auto, Auto$mpg, lm_fit_quad)
+mse(Auto, Auto$mpg, lm_fit_cubic)
+```
+
+
+# Leave-One-Out Cross-Validation
+
+Each observation is used sequentially as the validation set, all others being used for training. Without the `family` argument, glm performs linear regression as `lm`. But `glm` is necessary to use `cv.glm` for cross validation.
+
+```{r}
+glm_fit <- glm(mpg ~ horsepower, data = Auto)
+coef(glm_fit)
+lm_fit <- lm(mpg ~ horsepower, data = Auto)
+coef(lm_fit)
+```
+
+```{r}
+library(boot)
+cv_err <- cv.glm(Auto, glm_fit)
+cv_err$delta
+```
+
+```{r}
+library(purrr)
+```
+
+```{r}
+calc_cv_error <- function(data, degree) {
+  glm_fit <- glm(mpg ~ poly(horsepower, degree), data = data)
+  cv.glm(data, glm_fit)$delta[1]
+}
+cv_error <- map_dbl(1:10, ~ calc_cv_error(Auto, .x))
+cv_error
+```
+
+
+
+# k-Fold Cross-Validation
+
+Randomly divide observations into k-groups, using each as a validation set, all others being used for training.
+
+```{r}
+set.seed(17)
+calc_kf_error <- function(data, degree, k) {
+  glm_fit <- glm(mpg ~ poly(horsepower, degree), data = data)
+  cv.glm(data, glm_fit, K = k)$delta[1]
+}
+map_dbl(1:10, ~ calc_kf_error(Auto, .x, 10))
+```
+
+# Bootstrap
+
+- create a function to compute the statistic of interest
+- use `boot` to repeatedly sample observations with replacement
+
+The Portfolio data set in the ISLR2 package is simulated data of 100
+pairs of returns, generated in the fashion described in Section 5.2. To illus-
+trate the use of the bootstrap on this data, we must first create a function,
+alpha.fn(), which takes as input the (X, Y ) data as well as a vector indi-
+cating which observations should be used to estimate α. The function then
+outputs the estimate for α based on the selected observations.
+
+## Estimating a statistic's accuracy
+
+```{r}
+alpha_fn <- function(data, index) {
+  X <- data$X[index]
+  Y <- data$Y[index]
+  (var(Y) - cov(X, Y)) / (var(X) + var(Y) - 2 * cov(X, Y))
+}
+```
+
+```{r}
+alpha_fn(Portfolio, 1:100)
+```
+
+```{r}
+set.seed(7)
+alpha_fn(Portfolio, sample(100, 100, replace = T))
+```
+
+```{r}
+boot(Portfolio, alpha_fn, R = 1000)
+```
+
+$\hat{\alpha} = 0.5758$, the bootstrap estimate for $\text{SE}(\hat{\alpha})$ is 0.0897.
+
+## Estimating a linear regression model's accuracy
+
+```{r}
+boot_fn <- function(data, index) {
+  coef(lm(mpg ~ horsepower, data = data, subset = index))
+}
+boot_fn(Auto, 1:392)
+```
+
+```{r}
+set.seed(1)
+boot_fn(Auto, sample(392, 392, replace = T))
+```
+
+```{r}
+boot_fn(Auto, sample(392, 392, replace = T))
+```
+
+> compute standard errors of 1,100 estimates
+
+```{r}
+boot(Auto, boot_fn, 1000)
+```
+
+> computing with `summary`
+
+```{r}
+summary(lm(mpg ~ horsepower, data = Auto))$coef
+```
+
+There is significant disagreement, but the bootstrap is likely closer.
+
+```{r}
+boot_fn <- function(data, index) {
+  coef(
+    lm(mpg ~ horsepower + I(horsepower^2),
+      data = data, subset = index
+    )
+  )
+}
+set.seed(1)
+boot(Auto, boot_fn, 1000)
+```
+
+```{r}
+summary(lm(mpg ~ horsepower + I(horsepower^2), data = Auto))$coef
+```
+
+That's better.
+
+
+
+
+
+
