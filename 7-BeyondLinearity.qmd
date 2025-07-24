@@ -1,0 +1,351 @@
+---
+title: "Non-Linear Modeling"
+format: 
+  html:
+    toc: true
+    keep-md: true
+  gfm: default
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(paged.print = FALSE)
+options(digits = 3)
+```
+
+```{r}
+library(ISLR2)
+```
+
+
+# Polynomial Regression and Step Functions
+
+> Alternatives
+
+```{r}
+fit <- lm(wage ~ poly(age, 4), data = Wage)
+coef(summary(fit))
+```
+
+```{r}
+fit2 <- lm(wage ~ poly(age, 4, raw = T), data = Wage)
+coef(summary(fit2))
+```
+
+```{r}
+fit2a <- lm(wage ~ age + I(age^2) + I(age^3) + I(age^4),
+  data = Wage
+)
+coef(fit2a)
+```
+
+```{r}
+fit2b <- lm(wage ~ cbind(age, age^2, age^3, age^4),
+  data = Wage
+)
+coef(fit2b)
+```
+
+Create a grid of age values at which we want predictions
+
+```{r}
+agelims <- range(Wage$age)
+age_grid <- seq(agelims[1], agelims[2])
+preds <- predict(fit, newdata = list(age = age_grid), se = TRUE)
+se_bands <- cbind(
+  preds$fit + 2 * preds$se.fit,
+  preds$fit - 2 * preds$se.fit
+)
+```
+
+```{r}
+par(
+  mar = c(4.5, 4.5, 1, 1),
+  oma = c(0, 0, 4, 0)
+)
+with(Wage, plot(age, wage, xlim = agelims, cex = 0.5, col = "darkgrey"))
+title("Degree-4 Polynomial", outer = T)
+lines(age_grid, preds$fit, lwd = 2, col = "blue")
+matlines(age_grid, se_bands, lwd = 1, col = "blue", lty = 3)
+```
+
+```{r}
+preds2 <- predict(fit2, newdata = list(age = age_grid), se = T)
+max(abs(preds$fit - preds2$fit))
+```
+
+> Determining the degree of polynomial to use
+
+Use ANOVA sith an F-test.
+
+```{r}
+make_fit <- function(degree) {
+  lm(wage ~ poly(age, degree), data = Wage)
+}
+
+fit.1 <- make_fit(1)
+fit.2 <- make_fit(2)
+fit.3 <- make_fit(3)
+fit.4 <- make_fit(4)
+fit.5 <- make_fit(5)
+anova(fit.1, fit.2, fit.3, fit.4, fit.5)
+```
+
+Suggests that cubic or quartic polynomials are best. Alternatively
+
+```{r}
+coef(summary(fit.5))
+```
+
+Square of t-value = f-statistic
+
+```{r}
+3.145^2
+```
+
+```{r}
+make_fit_edu <- function(degree) {
+  lm(wage ~ education + poly(age, degree), data = Wage)
+}
+fit.1 <- make_fit_edu(1)
+fit.2 <- make_fit_edu(2)
+fit.3 <- make_fit_edu(3)
+anova(fit.1, fit.2, fit.3)
+```
+
+> Predict if individual makes more than 250K per year
+
+```{r}
+fit <- glm(I(wage > 250) ~ poly(age, 4),
+  data = Wage,
+  family = binomial
+)
+fit
+```
+
+
+```{r}
+preds <- predict(fit, newdata = list(age = age_grid), se = T)
+preds
+```
+
+ In order to obtain confidence intervals for Pr(Y = 1|X), the bust be transformed from the logit returned.
+ 
+```{r}
+pfit <- exp(preds$fit) / (1 + exp(preds$fit))
+se_bands_logit <- cbind(
+  preds$fit + 2 * preds$se.fit,
+  preds$fit - 2 * preds$se.fit
+)
+se_bands <- exp(se_bands_logit) / (1 + exp(se_bands_logit))
+```
+ 
+```{r}
+with(Wage, plot(age, I(wage > 250),
+  xlim = agelims, type = "n",
+  ylim = c(0, .2)
+))
+with(Wage, points(jitter(age), I((wage > 250) * 5),
+  cex = 0.5, pch = "|", col = "darkgrey"
+))
+lines(age_grid, pfit, lwd = 2, col = "blue")
+matlines(age_grid, se_bands, lwd = 1, col = "blue", lty = 3)
+```
+
+> Fitting a step function
+
+```{r}
+table(cut(Wage$age, 4))
+```
+
+```{r}
+fit <- lm(wage ~ cut(age, 4), data = Wage)
+coef(summary(fit))
+```
+
+`cut()` returns an ordered, categorical variable and `lm()` creates the dummy variables for the regression. Avg salary for ages < 33.5 would be $94,160, with each coefficient being the incremental amount for the age group.
+
+# Splines
+
+`bs()` generates the matrix of base functions for the splines based on specified knots. By default, cubic splines are produced.
+
+```{r}
+library(splines)
+fit <- lm(wage ~ bs(age, knots = c(25, 40, 60)), data = Wage)
+pred <- predict(fit, newdata = list(age = age_grid), se = T)
+```
+```{r}
+with(Wage, plot(age, wage, col = "gray"))
+lines(age_grid, pred$fit, lwd = 2)
+lines(age_grid, pred$fit + 2 * pred$se, lty = "dashed")
+lines(age_grid, pred$fit - 2 * pred$se, lty = "dashed")
+```
+
+> Produce a spline with knots at uniform quantiles
+
+```{r}
+dim(bs(Wage$age, knots = c(25, 40, 60)))
+dim(bs(Wage$age, df = 6))
+attr(bs(Wage$age, df = 6), "knots")
+```
+
+`bs()` also gas a `degree` argument.
+
+> Produce a natural spline
+
+```{r}
+fit2 <- lm(wage ~ ns(age, df = 4), data = Wage)
+pred2 <- predict(fit2,
+  newdata = list(age = age_grid),
+  se = T
+)
+with(Wage, plot(age, wage, col = "gray"))
+lines(age_grid, pred2$fit, col = "red", lwd = 2)
+```
+
+> Smoothing Spline
+
+```{r}
+#| warning: false
+fit <- with(Wage, smooth.spline(age, wage, df = 16))
+fit2 <- with(Wage, smooth.spline(age, wage, cv = TRUE))
+fit2$df
+```
+
+```{r}
+with(Wage, plot(age, wage, xlim = agelims, cex = .5, col = "darkgrey"))
+title("Smoothing Spline")
+lines(fit, col = "red", lwd = 2)
+lines(fit2, col = "blue", lwd = 2)
+legend("topright",
+  legend = c("16 DF", "6.8 DF"),
+  col = c("red", "blue"), lty = 1, lwd = 2, cex = 0.8
+)
+```
+
+> Local regression
+
+```{r}
+fit <- loess(wage ~ age, span = 0.2, data = Wage)
+fit2 <- loess(wage ~ age, span = 0.5, data = Wage)
+with(Wage, plot(age, wage, xlim = agelims, cex = .5, col = "darkgrey"))
+title("Local Regression")
+lines(age_grid, predict(fit, data.frame(age = age_grid)),
+  col = "red", lwd = 2
+)
+lines(age_grid, predict(fit2, data.frame(age = age_grid)),
+  col = "blue", lwd = 2
+)
+legend("topright",
+  legend = c("Span = 0.2", "Span - 0.5"),
+  col = c("red", "blue"), lty = 1, lwd = 2, cex = .8
+)
+```
+
+Each neighborhood consists of 20% or 50% of the observations.
+
+# GAMs
+
+Using a batural spline and adding the qualitative predictor:
+
+```{r}
+gam1 <- lm(wage ~ ns(year, 4) + ns(age, 5) + education,
+  data = Wage
+)
+```
+
+For more general GAMs:
+
+```{r}
+#| message: false
+library(gam)
+gam_m3 <- gam(wage ~ s(year, 4) + s(age, 5) + education,
+  data = Wage
+)
+```
+
+```{r}
+par(mfrow = c(1, 3))
+plot(gam_m3, se = TRUE, col = "blue")
+```
+
+```{r}
+par(mfrow = c(1, 3))
+plot.Gam(gam1, se = TRUE, col = "red")
+```
+
+> Which model is best
+
+```{r}
+gam_m1 <- gam(wage ~ s(age, 5) + education, data = Wage)
+gam_m2 <- gam(wage ~ year + s(age, 5) + education, data = Wage)
+anova(gam_m1, gam_m2, gam_m3, test = "F")
+```
+
+The addition of the linear year is useful, but non-linear year is not.
+
+```{r}
+summary(gam_m3)
+```
+
+Make predictions on training set.
+
+```{r}
+preds <- predict(gam_m2, newdata = Wage)
+```
+
+Use a local regression as building block.
+
+```{r}
+gam_lo <- gam(
+  wage ~ s(year, df = 4) + lo(age, span = 0.7) + education,
+  data = Wage
+)
+```
+
+```{r}
+par(mfrow = c(1, 3))
+plot(gam_lo, se = TRUE, col = "green")
+```
+
+> Create interactions
+
+```{r}
+gam_lo_i <- gam(wage ~ lo(year, age, span = 0.5) + education,
+  data = Wage
+)
+```
+
+```{r}
+library(akima)
+par(mfrow = c(1, 2))
+plot(gam_lo_i)
+```
+
+> Logistic regression GAM
+
+```{r}
+gam_lr <- gam(
+  I(wage > 250) ~ year + s(age, df = 5) + education,
+  family = binomial,
+  data = Wage
+)
+par(mfrow = c(1, 3))
+plot(gam_lr, se = T, col = "green")
+```
+
+```{r}
+with(Wage, table(education, I(wage > 250)))
+```
+
+There are no high earners in the 1st category, so redo without.
+
+```{r}
+gam_lr_s <- gam(
+  I(wage > 250) ~ year + s(age, df = 5) + education,
+  family = binomial, data = Wage,
+  subset = (education != "1. < HS Grad")
+)
+par(mfrow = c(1, 3))
+plot(gam_lr_s, se = T, col = "green")
+```
+

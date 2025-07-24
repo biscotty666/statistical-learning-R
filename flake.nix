@@ -52,46 +52,49 @@
             rstudio
             radianWrapper
             (with rPackages; [
-              quarto
-              languageserver
-              httpgd
-              lintr
-              pagedown
-              e1071
-              tidyverse
-              scatterPlotMatrix
-              ggfortify
+              GGally
+              ISLR2
+              MASS
+              R6
+              RPostgres
+              RSQLite
+              Rcpp
+              akima
               bench
+              bookdown
               car
+              dbplyr
               desc
-              leaps
-              glmnet
               downlit
-              ggbeeswarm
+              e1071
+              gam
               gapminder
-              janitor
+              ggbeeswarm
+              ggfortify
+              glmnet
               gt
               gtsummary
-              rstan
+              httpgd
+              interp
+              janitor
+              languageserver
+              leaps
+              lintr
               lobstr
               memoise
-              MASS
-              ISLR2
-              png
+              pagedown
               palmerpenguins
-              profvis
-              R6
               pls
-              GGally
-              dbplyr
-              RPostgres
-              Rcpp
+              png
+              profvis
+              quarto
+              rstan
+              scatterPlotMatrix
               sessioninfo
               sloop
               testthat
+              tidyverse
               zeallot
-              RSQLite
-              bookdown
             ])
           ];
   postgresConf =
