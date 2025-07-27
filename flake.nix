@@ -52,6 +52,7 @@
             rstudio
             radianWrapper
             (with rPackages; [
+              BART
               GGally
               ISLR2
               MASS
@@ -69,6 +70,7 @@
               e1071
               gam
               gapminder
+              gbm
               ggbeeswarm
               ggfortify
               glmnet
@@ -88,12 +90,14 @@
               png
               profvis
               quarto
+              randomForest
               rstan
               scatterPlotMatrix
               sessioninfo
               sloop
               testthat
               tidyverse
+              tree
               zeallot
             ])
           ];
