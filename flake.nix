@@ -57,6 +57,7 @@
               ISLR2
               MASS
               R6
+              ROCR
               RPostgres
               RSQLite
               Rcpp
@@ -68,6 +69,7 @@
               desc
               downlit
               e1071
+              keras
               gam
               gapminder
               gbm
