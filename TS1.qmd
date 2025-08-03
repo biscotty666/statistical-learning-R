@@ -1,0 +1,547 @@
+---
+title: "TSA"
+format: 
+  gfm:
+    toc: true
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(paged.print = FALSE)
+options(digits = 7)
+```
+
+For example, the file http://robjhyndman.com/tsdldata/misc/kings.dat contains data on the age of death of successive kings of England, starting with William the Conqueror (original source: Hipel and Mcleod, 1994).
+
+```{r}
+kings <- scan("http://robjhyndman.com/tsdldata/misc/kings.dat", skip = 3)
+kings
+```
+
+Store in a TS object
+
+```{r}
+kings_ts <- ts(kings)
+kings_ts
+```
+
+Defaults to yearly. For monthly time series data, you set frequency=12, while for quarterly time series data, you set frequency=4.
+
+You can also specify the first year that the data was collected, and the first interval in that year by using the ‘start’ parameter in the ts() function. For example, if the first data point corresponds to the second quarter of 1986, you would set start=c(1986,2).
+
+An example is a data set of the number of births per month in New York city, from January 1946 to December 1959 (originally collected by Newton). This data is available in the file http://robjhyndman.com/tsdldata/data/nybirths.dat 
+
+```{r}
+births <- scan("http://robjhyndman.com/tsdldata/data/nybirths.dat")
+births_ts <- ts(births, frequency = 12, start = c(1946, 1))
+births_ts
+```
+
+Similarly, the file http://robjhyndman.com/tsdldata/data/fancy.dat contains monthly sales for a souvenir shop at a beach resort town in Queensland, Australia, for January 1987-December 1993 (original data from Wheelwright and Hyndman, 1998). 
+
+```{r}
+souvenir <- scan("http://robjhyndman.com/tsdldata/data/fancy.dat")
+souvenir_ts <- ts(souvenir, frequency = 12, start = c(1987, 1))
+souvenir_ts
+```
+
+# Plotting
+
+```{r}
+plot.ts(kings_ts)
+```
+
+This time series could probably be described using an additive model, since the random fluctuations in the data are roughly constant in size over time.
+
+```{r}
+plot.ts(births_ts)
+```
+
+Seasonal variation and trend. Additive model
+
+```{r}
+plot.ts(souvenir_ts)
+```
+
+Seasonal and random flucuations increase over time, so an additive model probably wouldn't work. OTOH
+
+```{r}
+souvenir_ts_log <- log(souvenir_ts)
+plot.ts(souvenir_ts_log)
+```
+
+An additive model would work with the log ts.
+
+# Decomposing
+
+## Non-seasonal
+
+Estimate the trend and irregular component. Use a simple moving average.
+
+```{r}
+library(TTR)
+```
+
+```{r}
+kings_ts_sma3 <- SMA(kings_ts, n = 3) # moving average 3
+par(mfrow = c(1, 2))
+plot(kings_ts)
+plot(kings_ts_sma3)
+```
+
+There are still a lot of random fluctuations. Try a higer order of smoothing.
+
+```{r}
+kings_ts_sma8 <- SMA(kings_ts, n = 8)
+par(mfrow = c(1, 2))
+plot(kings_ts_sma3)
+plot(kings_ts_sma8)
+```
+
+This gives a clearer trend.
+
+## Seasonal Data
+
+Trend, seasonal, random.
+
+```{r}
+births_ts_components <- decompose(births_ts)
+births_ts_components$seasonal
+```
+
+```{r}
+plot(births_ts_components)
+```
+
+## Seassonally Adjusting
+
+```{r}
+births_ts_seasonally_adjusted <- births_ts - births_ts_components$seasonal
+plot(births_ts_seasonally_adjusted)
+```
+
+This just contains the trend and random portions.
+
+# Forecasts using Exponential Smoothing
+
+For short-term forecasts
+
+## Simple exponential smoothing
+
+If the time series can be described by an additive model with no seasonality, can use simple exponential smoothing.
+
+The alpha parameter is between 0 and 1, the higher the value the more weight is placed on the most recent observations.
+
+For example, the file http://robjhyndman.com/tsdldata/hurst/precip1.dat contains total annual rainfall in inches for London, from 1813-1912 (original data from Hipel and McLeod, 1994). 
+
+```{r}
+rain <- scan("http://robjhyndman.com/tsdldata/hurst/precip1.dat", skip = 1)
+rain_ts <- ts(rain, start = c(1813))
+plot.ts(rain_ts)
+```
+
+Random fluctuations around a constant mean. The `HoltWinters()` function.
+
+```{r}
+rain_ts_fct <- HoltWinters(rain_ts, beta = F, gamma = F)
+rain_ts_fct
+```
+
+The forecasts are in
+
+```{r}
+rain_ts_fct$fitted
+```
+
+
+```{r}
+plot(rain_ts_fct)
+```
+
+The forecasts are in red. They seem far too smooth. Measure the accuracy with SSE.
+
+```{r}
+rain_ts_fct$SSE
+```
+
+The default first value is
+
+```{r}
+rain_ts_fct2 <- HoltWinters(rain_ts, beta = F, gamma = F, l.start = rain_ts[1])
+```
+
+```{r}
+plot(rain_ts_fct2)
+```
+
+```{r}
+#| message: false
+
+library(forecast)
+```
+
+The h paraemter determines how many periods to forecast.
+
+```{r}
+rain_ts_fct3 <- forecast(rain_ts_fct2, h = 8)
+rain_ts_fct3
+```
+
+```{r}
+plot(rain_ts_fct3)
+```
+
+Determine if there are correlations between errors for successive predictions.
+
+Calculate a correlogram.
+
+```{r}
+residuals <- window(rain_ts_fct3$residuals, start = 1814)
+acf(residuals, lag.max = 20)
+```
+
+At lag 3, the ac is just touching significant.Use the Ljung-Box test for significance.
+
+```{r}
+Box.test(residuals, lag = 20, type = "Ljung-Box")
+```
+Little evidence of non-zero autocorrelations. Are the forecast errors normally distributed?
+
+```{r}
+plot.ts(residuals)
+```
+
+They seem to have roughly the same variance over time.
+
+```{r}
+plot_fct_errors <- function(errors) {
+  bin_size <- IQR(errors) / 4
+  sd_err <- sd(errors)
+  min_err <- min(errors) - sd_err * 5
+  max_err <- max(errors) + sd_err * 3
+  norm <- rnorm(10000, mean = 0, sd = sd_err)
+  min2 <- min(norm)
+  max2 <- max(norm)
+  if (min2 < min_err) {
+    min_err <- min2
+  }
+  if (max2 > max_err) {
+    max_err <- max2
+  }
+  bins <- seq(min_err, max_err, bin_size)
+  hist(errors, col = "red", freq = FALSE, breaks = bins)
+  hist_plt <- hist(norm, plot = F, breaks = bins)
+  points(hist_plt$mids, hist_plt$density,
+    type = "l",
+    col = "blue", lwd = 2
+  )
+}
+```
+
+```{r}
+plot_fct_errors(residuals)
+```
+
+## Holt's exponential smoothing
+
+For series than can be described with an additive model with trend but no seasonality.
+Smoothing is controlled by alpha for estimate at level at current time and b for estimate of slope of trend component at current time. Closer to 1, more weight on most recent observations.
+
+An example of a time series that can probably be described using an additive model with a trend and no seasonality is the time series of the annual diameter of women’s skirts at the hem, from 1866 to 1911. The data is available in the file http://robjhyndman.com/tsdldata/roberts/skirts.dat (original data from Hipel and McLeod, 1994).
+
+```{r}
+skirts <- scan("http://robjhyndman.com/tsdldata/roberts/skirts.dat",
+  skip = 5
+)
+skirts_ts <- ts(skirts)
+plot.ts(skirts_ts)
+```
+
+```{r}
+skirts_ts_fct <- HoltWinters(skirts_ts, gamma = F)
+skirts_ts_fct
+skirts_ts_fct$SSE
+```
+
+The high alpht and beta suggest that the level and slope are heavily based on recent observations.
+
+```{r}
+plot(skirts_ts_fct)
+```
+
+Original TS is black, forecasts are red.
+
+It is common to set the initial value of the level to the first value in the time series (608 for the skirts data), and the initial value of the slope to the second value minus the first value (9 for the skirts data). 
+
+```{r}
+skirts_ts_hw <- HoltWinters(skirts_ts, gamma = FALSE, l.start = 608, b.start = 9)
+skirts_ts_fct2 <- forecast(skirts_ts_hw, h = 19)
+```
+
+```{r}
+plot(skirts_ts_fct2)
+```
+
+Check the residuals
+
+```{r}
+acf(skirts_ts_fct2$residuals,
+  lag.max = 20,
+  na.action = na.pass
+)
+```
+
+```{r}
+Box.test(skirts_ts_fct2$residuals, lag = 20, type = "Ljung-Box")
+```
+
+Little evidence of non-zero autorrelations.
+
+```{r}
+plot.ts(skirts_ts_fct2$residuals)
+```
+
+```{r}
+residuals <- window(skirts_ts_fct2$residuals, start = 3)
+plot_fct_errors(residuals)
+```
+
+The data is potentially bi-modal. Very roughly normally distributed.
+
+## Holt-Winters Exponential Smoothing
+
+For series with trend and seasonality. Smoothing is controlled by three parameters: alpha, beta, and gamma, for the estimates of the level, slope b of the trend component, and the seasonal component, respectively, at the current time point.
+
+```{r}
+plot.ts(souvenir_ts_log)
+```
+
+```{r}
+souvenir_ts_log_fct <- HoltWinters(souvenir_ts_log)
+souvenir_ts_log_fct
+souvenir_ts_log_fct$SSE
+```
+
+alpha suggest a balance between recent observations and past observations. beta suggests that the slope of the trend is not updated over time, but set to initial value. Gamma suggests that the seasonal component is highly related to recent observations.
+
+```{r}
+plot(souvenir_ts_log_fct)
+```
+
+```{r}
+souvenir_ts_log_preds <- forecast(souvenir_ts_log_fct, h = 48)
+plot(souvenir_ts_log_preds)
+```
+
+We can investigate whether the predictive model can be improved upon by checking whether the in-sample forecast errors show non-zero autocorrelations at lags 1-20, by making a correlogram and carrying out the Ljung-Box test:
+
+```{r}
+acf(souvenir_ts_log_preds$residuals, lag.max = 20, na.action = na.pass)
+```
+```{r}
+Box.test(souvenir_ts_log_preds$residuals,
+  lag = 20, type = "Ljung-Box"
+)
+```
+
+The correlogram shows that the autocorrelations for the in-sample forecast errors do not exceed the significance bounds for lags 1-20. Furthermore, the p-value for Ljung-Box test is 0.6, indicating that there is little evidence of non-zero autocorrelations at lags 1-20.
+
+Check for constant variance over time.
+
+```{r}
+plot.ts(souvenir_ts_log_preds$residuals)
+```
+
+```{r}
+residuals <- window(souvenir_ts_log_preds$residuals, start = 1988)
+plot_fct_errors(residuals)
+```
+
+The residuals appear to be normally distributed, suggesting the predictive model is adequate.
+
+# ARIMA Models
+
+Autoregressive Integrated Moving Average (ARIMA) models include an explicit statistical model for the irregular component of a time series, that allows for non-zero autocorrelations in the irregular component.
+
+ARIMA models require stationary series. Must difference to make stationary. If you have to difference the time series d times to obtain a stationary series, then you have an ARIMA(p,d,q) model, where d is the order of differencing used.
+
+```{r}
+plot(skirts_ts)
+```
+
+The mean is not stationary.
+
+```{r}
+skirts_ts_diff1 <- diff(skirts_ts, differences = 1)
+plot.ts(skirts_ts_diff1)
+```
+
+Better, but not right.
+
+```{r}
+skirts_ts_diff2 <- diff(skirts_ts, differences = 2)
+plot.ts(skirts_ts_diff2)
+```
+
+This appear stationary. For ARIMA(p,d,q), d = 2. Now estimate p and q. Another example:
+
+```{r}
+plot.ts(kings_ts)
+```
+
+```{r}
+kings_ts_diff1 <- diff(kings_ts, differences = 1)
+plot(kings_ts_diff1)
+```
+
+Now it is stationary.
+
+## Select candiate model
+
+To find p and q, examing correlogram and partial correlogram
+
+```{r}
+acf(kings_ts_diff1, lag.max = 20, na.action = na.pass)
+```
+
+```{r}
+acf(kings_ts_diff1, lag.max = 20, na.action = na.pass, plot = F)
+```
+
+at lag 1, exceeds the significance bounds.
+
+```{r}
+pacf(kings_ts_diff1, lag.max = 20, na.action = na.pass)
+```
+
+```{r}
+pacf(kings_ts_diff1, lag.max = 20, na.action = na.pass, plot = F)
+```
+
+Since the correlogram is zero after lag 1, and the partial correlogram tails off to zero after lag 3, this means that the following ARMA (autoregressive moving average) models are possible for the time series of first differences:
+
+- an ARMA(3,0) model, that is, an autoregressive model of order p=3, since the partial autocorrelogram is zero after lag 3, and the autocorrelogram tails off to zero (although perhaps too abruptly for this model to be appropriate)
+- an ARMA(0,1) model, that is, a moving average model of order q=1, since the autocorrelogram is zero after lag 1 and the partial autocorrelogram tails off to zero
+- an ARMA(p,q) model, that is, a mixed model with p and q greater than 0, since the autocorrelogram and partial correlogram tail off to zero (although the correlogram probably tails off to zero too abruptly for this model to be appropriate)
+
+Start with the simplest model ARIMA(0,1). Since an ARMA(0,1) model (with p=0, q=1) is taken to be the best candidate model for the time series of first differences of the ages at death of English kings, then the original time series of the ages of death can be modelled using an ARIMA(0,1,1) model (with p=0, d=1, q=1, where d is the order of differencing required).
+
+Another example of selecting an appropriate ARIMA model. The file file http://robjhyndman.com/tsdldata/annual/dvi.dat contains data on the volcanic dust veil index in the northern hemisphere, from 1500-1969 (original data from Hipel and Mcleod, 1994). This is a measure of the impact of volcanic eruptions’ release of dust and aerosols into the environment. 
+
+```{r}
+volcanodust <- scan("http://robjhyndman.com/tsdldata/annual/dvi.dat", skip = 1)
+volcanodust_ts <- ts(volcanodust, start = c(1500))
+plot.ts(volcanodust_ts)
+```
+
+
+
+```{r}
+acf(volcanodust_ts, lag.max = 20)
+```
+
+```{r}
+acf(volcanodust_ts, lag.max = 20, plot = F)
+```
+
+```{r}
+pacf(volcanodust_ts, lag.max = 20)
+```
+
+Since the correlogram tails off to zero after lag 3, and the partial correlogram is zero after lag 2, the following ARMA models are possible for the time series:
+
+    an ARMA(2,0) model, since the partial autocorrelogram is zero after lag 2, and the correlogram tails off to zero after lag 3, and the partial correlogram is zero after lag 2
+    an ARMA(0,3) model, since the autocorrelogram is zero after lag 3, and the partial correlogram tails off to zero (although perhaps too abruptly for this model to be appropriate)
+    an ARMA(p,q) mixed model, since the correlogram and partial correlogram tail off to zero (although the partial correlogram perhaps tails off too abruptly for this model to be appropriate)
+
+```{r}
+auto.arima(volcanodust_ts)
+```
+
+```{r}
+auto.arima(volcanodust_ts, ic = "bic")
+```
+
+## Forecasting ARIMA
+
+For example, we discussed above that an ARIMA(0,1,1) model seems a plausible model for the ages at deaths of the kings of England. You can specify the values of p, d and q in the ARIMA model by using the “order” argument of the “arima()” function in R. To fit an ARIMA(p,d,q) model to this time series (which we stored in the variable “kingstimeseries”, see above), we type:
+
+```{r}
+kings_ts_arima <-
+  arima(
+    kings_ts,
+    order = c(0, 1, 1) # An ARIMA(0,1,1) model
+  )
+kings_ts_arima
+```
+```{r}
+kings_ts_arima_fct <- forecast(kings_ts_arima, h = 5)
+kings_ts_arima_fct
+```
+
+> Specify confidence level
+
+```{r}
+forecast(kings_ts_arima, h = 5, level = c(99.5))
+```
+
+```{r}
+plot(kings_ts_arima_fct)
+```
+
+Are the errors normally distributed with mean 0 and constant variance?
+
+```{r}
+acf(kings_ts_arima_fct$residuals, lag.max = 20)
+```
+
+```{r}
+Box.test(kings_ts_arima_fct$residuals, lag = 20, type = "Ljung-Box")
+```
+
+Very little evidence for non-zero autocorrelations.
+
+```{r}
+plot.ts(kings_ts_arima_fct$residuals)
+```
+
+```{r}
+plot_fct_errors(kings_ts_arima_fct$residuals)
+```
+
+We discussed above that an appropriate ARIMA model for the time series of volcanic dust veil index may be an ARIMA(2,0,0) model. To fit an ARIMA(2,0,0) model to this time series, we can type:
+
+```{r}
+volcanodust_ts_arima <- arima(volcanodust_ts, order = c(2, 0, 0))
+volcanodust_ts_arima
+```
+
+$\beta_1$ is 0.7533 and $\beta_2$ is -0.1268.
+
+```{r}
+volcanodust_ts_fct <- forecast(volcanodust_ts_arima, h = 30)
+volcanodust_ts_fct
+```
+
+```{r}
+plot(volcanodust_ts_fct)
+```
+
+One worrying thing is that the model has predicted negative values for the volcanic dust veil index, but this variable can only have positive values! The reason is that the arima() and forecast.Arima() functions don’t know that the variable can only take positive values. Clearly, this is not a very desirable feature of our current predictive model
+
+```{r}
+acf(volcanodust_ts_fct$residuals, lag.max = 20)
+```
+
+```{r}
+Box.test(volcanodust_ts_fct$residuals, lag = 20, type = "Ljung-Box")
+```
+
+```{r}
+plot.ts(volcanodust_ts_fct$residuals)
+```
+
+```{r}
+plot_fct_errors(volcanodust_ts_fct$residuals)
+```
+
+The histogram of forecast errors (above) shows that although the mean value of the forecast errors is negative, the distribution of forecast errors is skewed to the right compared to a normal curve. Therefore, it seems that we cannot comfortably conclude that the forecast errors are normally distributed with mean zero and constant variance! Thus, it is likely that our ARIMA(2,0,0) model for the time series of volcanic dust veil index is not the best model that we could make, and could almost definitely be improved upon!

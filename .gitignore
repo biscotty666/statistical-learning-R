@@ -1,3 +1,4 @@
+.ipynb*
 .Rproj.user
 .Rhistory
 .RData
@@ -8,3 +9,5 @@ data/
 docs/
 *Rproj
 .vscode
+
+/.quarto/

@@ -40,57 +40,56 @@ confint(lm_fit)
 
 ```{r}
 predict(lm_fit, data.frame(lstat = (c(5, 10, 15))),
-        interval = "confidence")
+  interval = "confidence"
+)
 ```
 
 ```{r}
 predict(lm_fit, data.frame(lstat = (c(5, 10, 15))),
-        interval = "prediction")
+  interval = "prediction"
+)
 ```
 
 These are 95% conficence intervals for various values of `lstat`.
 
 ```{r}
-with(lm_fit$model, plot(lstat, medv, 
-                        col = "green",
-                        pch = "+"))
+with(lm_fit$model, plot(lstat, medv,
+  col = "green",
+  pch = "+"
+))
 abline(lm_fit, lwd = 3, col = "red")
 ```
 
 ```{r}
-ggplot(lm_fit, aes(x = lstat, y = medv))  +
+ggplot(lm_fit, aes(x = lstat, y = medv)) +
   geom_point(color = "green") +
   geom_smooth() +
-  geom_abline(slope = coef(lm_fit)[2],
-              intercept = coef(lm_fit)[1],
-              color = "red")
+  geom_abline(
+    slope = coef(lm_fit)[2],
+    intercept = coef(lm_fit)[1],
+    color = "red"
+  )
 ```
 
 ```{r}
-plot (1:20 , 1:20, pch = 1:20)
+plot(1:20, 1:20, pch = 1:20)
 ```
 
 ```{r}
-par(mfrow = c(2,2), mar = rep(2,4))
+par(mfrow = c(2, 2), mar = rep(2, 4))
 plot(lm_fit)
 ```
 ```{r}
-ggplot(lm_fit, aes(x = lm_fit$fitted.values,
-                 y = lm_fit$residuals)) +
+ggplot(lm_fit, aes(
+  x = lm_fit$fitted.values,
+  y = lm_fit$residuals
+)) +
   geom_point(shape = 21, fill = NA, size = 2)
 ```
 
 ```{r}
 library(ggfortify)
 autoplot(lm_fit)
-```
-
-```{r}
-mff <- fort
-```
-
-```{r}
-vignette('ggfortify')
 ```
 
 
@@ -115,8 +114,10 @@ plot(hatvalues(lm_fit))
 
 ```{r}
 ggplot(lm_fit) +
-  geom_point(aes(x = 1:length(hatvalues(lm_fit)),
-                 y = hatvalues(lm_fit))) +
+  geom_point(aes(
+    x = 1:length(hatvalues(lm_fit)),
+    y = hatvalues(lm_fit)
+  )) +
   labs(x = "Index")
 ```
 
@@ -139,7 +140,7 @@ summary(lm_fit)
 
 ```{r}
 summary(lm_fit)$r.sq
-summary(lm_fit)$sigma  # RSE
+summary(lm_fit)$sigma # RSE
 ```
 
 ```{r}
@@ -182,7 +183,7 @@ anova(lm_fit, lm_fit2)
 F and p-values show the quadratic model to be far superior.
 
 ```{r}
-par(mfrow = c(2,2), mar = rep(1,4))
+par(mfrow = c(2, 2), mar = rep(1, 4))
 plot(lm_fit2)
 ```
 
@@ -218,7 +219,8 @@ head(Carseats)
 
 ```{r}
 lm_fit <- lm(Sales ~ . + Income:Advertising + Price:Age,
-             data = Carseats)
+  data = Carseats
+)
 summary(lm_fit)
 ```
 
@@ -246,27 +248,32 @@ summary(lm_fit)
 
 ```{r}
 predict(lm_fit, data.frame(horsepower = 98),
-        interval = "confidence")
+  interval = "confidence"
+)
 ```
 
 ```{r}
 predict(lm_fit, data.frame(horsepower = 98),
-        interval = "prediction")
+  interval = "prediction"
+)
 ```
 
 ```{r}
-with(lm_fit$model, plot(horsepower, mpg, 
-                        col = "green",
-                        pch = "+"))
+with(lm_fit$model, plot(horsepower, mpg,
+  col = "green",
+  pch = "+"
+))
 abline(lm_fit, lwd = 3, col = "red")
 ```
 
 ```{r}
 ggplot(lm_fit) +
   geom_point(aes(x = horsepower, y = mpg), color = "green") +
-  geom_abline(slope = lm_fit$coefficients[2],
-              intercept = lm_fit$coefficients[1],
-              color = "red")
+  geom_abline(
+    slope = lm_fit$coefficients[2],
+    intercept = lm_fit$coefficients[1],
+    color = "red"
+  )
 ```
 
 9. This question involves the use of multiple linear regression on the Auto data set.
@@ -286,7 +293,8 @@ str(Auto)
 #| message: false
 
 library(GGally)
-Auto |> dplyr::select(-name) |> 
+Auto |>
+  dplyr::select(-name) |>
   ggpairs()
 ```
 
@@ -295,8 +303,8 @@ Auto |> dplyr::select(-name) |>
 
 
 ```{r}
-Auto |> 
-  dplyr::select(-name) |> 
+Auto |>
+  dplyr::select(-name) |>
   cor()
 ```
 
@@ -313,7 +321,7 @@ summary(lm_fit)
 ```
 
 ```{r}
-lm(mpg ~ weight + year + origin, data = Auto) |> 
+lm(mpg ~ weight + year + origin, data = Auto) |>
   summary()
 ```
 
@@ -327,10 +335,14 @@ plot(predict(lm_fit), residuals(lm_fit))
 
 ```{r}
 ggplot(lm_fit) +
-  geom_point(aes(x = predict(lm_fit),
-                 y = residuals(lm_fit)),
-             shape = 21,
-             size = 2, fill = NA)
+  geom_point(
+    aes(
+      x = predict(lm_fit),
+      y = residuals(lm_fit)
+    ),
+    shape = 21,
+    size = 2, fill = NA
+  )
 ```
 
 

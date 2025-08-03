@@ -1,0 +1,80 @@
+---
+title: "Deep Learning"
+format: 
+  html:
+    toc: true
+    keep-md: true
+  gfm: default
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(paged.print = FALSE)
+options(digits = 4)
+```
+
+# Single Layer Network
+
+This is a regression problem, where the goal is to predict the Salary of a baseball player in 1987 using his performance statistics from 1986. After removing players with missing responses, we are left with 263 players and 19 variables. We randomly split the data into a training set of 176 players (two thirds), and a test set of 87 players (one third). We used three methods for fitting a regression model to these data.
+
+```{r}
+library(reticulate)
+pandas <- import("pandas")
+```
+
+
+```{r}
+library(ISLR2)
+Gitters <- na.omit(Hitters)
+n <- nrow(Gitters)
+set.seed(13)
+ntest <- trunc(n / 3)
+testid <- sample(1:n, ntest)
+```
+
+> Linear model
+
+```{r}
+lfit <- lm(Salary ~ ., data = Gitters[-testid, ])
+lpred <- predict(lfit, Gitters[testid, ])
+with(Gitters[testid, ], mean(abs(lpred - Salary)))
+```
+
+> Fit lasso using `glmnet()`
+
+
+Cannot supply formula, must create x and y
+
+```{r}
+x <- scale(model.matrix(Salary ~ . - 1, data = Gitters))
+y <- Gitters$Salary
+```
+
+```{r}
+#| message: false
+library(glmnet)
+cvfit <- cv.glmnet(x[-testid, ], y[-testid],
+                   type.measure = "mae")
+cpred <- predict(cvfit, x[testid, ], s = "lambda.min")
+mean(abs(y[testid] - cpred))
+```
+
+> Fit the neural network
+
+```{r}
+library(keras)
+
+modnn <- keras_model_sequential() |> 
+  layer_dense(units = 50, activation = "relu",
+              input_shape = ncol(x)) |> 
+  layer_dropout(rate = 0.4) |> 
+  layer_dense(units = 1)
+```
+
+
+
+
+
+
+
+
+
