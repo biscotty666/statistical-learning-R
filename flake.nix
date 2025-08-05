@@ -86,6 +86,7 @@
               gbm
               ggbeeswarm
               ggfortify
+              ggpubr
               glmnet
               gt
               gtsummary
@@ -97,6 +98,7 @@
               lintr
               lobstr
               memoise
+              nortest
               pagedown
               palmerpenguins
               Rpdb

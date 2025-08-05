@@ -1,0 +1,100 @@
+---
+title: "NormalityCheck"
+format: 
+  gfm: 
+    toc: true
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(paged.print = FALSE)
+```
+
+```{r}
+#| message: false
+
+library(ggpubr)
+data("sleep")
+```
+
+```{r}
+head(sleep)
+```
+
+> Does extra sleep follow a normal distribution?
+
+# Visual check
+
+Create a density curve
+
+```{r}
+ggdensity(sleep$extra,
+  add = "mean",
+  fill = "navy"
+)
+```
+
+Visually seems pretty normal.
+
+Create a qq-plot
+
+```{r}
+ggqqplot(sleep$extra)
+```
+
+Confirms normal distribution. High correlation to theoretical.
+
+# Statistical tests
+
+H0: Samplint dist is normal H1: Sample dist is not normal
+
+1.  Shapiro-Wilk (SW)
+
+-   Most widely used
+-   Not recommended for small sample size or many equal values
+
+2.  Kolmogorov-Smirnov (KS)
+
+-   Less powerful
+-   Sensitive to ties
+
+## Shapiro-Wilk test
+
+```{r}
+shapiro.test(sleep$extra)
+```
+
+The sample is not statistically different from normal. Cannot reject the null hypothesis.
+
+```{r}
+ks.test(sleep$extra, "pnorm")
+```
+
+According to this test, the distribution is not normal.
+
+```{r}
+library(nortest)
+```
+
+```{r}
+ad.test(sleep$extra)
+```
+
+```{r}
+cvm.test(sleep$extra)
+```
+
+```{r}
+lillie.test(sleep$extra)
+```
+
+```{r}
+sf.test(sleep$extra)
+```
+
+```{r}
+pearson.test(sleep$extra)
+```
+
+All tests show not significant. Conclusion: not different from normal.
+
+If not normal, consider transformations, ie. log. Otherwise, use non-parametric.
