@@ -1,0 +1,148 @@
+---
+title: "Chi squared independent test/Fisher's"
+format: 
+  gfm: 
+    toc: true
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(paged.print = FALSE)
+```
+
+```{r}
+library(magrittr)
+```
+
+# Chi squared independent test
+
+Is there a significant association between two variables?
+
+Used for categorical variables (cf. spearman/pearson for continuous variables)
+
+$$
+\chi^2 = \frac{\sum(O_i-E_i)^2}{E_i}\\
+O_i: \text{Observed value} \\
+E_i: \text{Expected value}
+$$
+
+$$
+E_i = \frac{row total \times column total}{Sample\ size} 
+$$
+
+
+## Assumptions
+
+- random samples
+- mutually exclusive categories
+- independent observations
+- expected frequency count for each category is at least 5
+
+H0: no associations between variable A and B: they are independent
+H1: there is an association/they are dependent.
+
+## Example
+
+```{r}
+data <- read.csv("https://raw.githubusercontent.com/DrMollalo/R_Data/refs/heads/main/Voting.csv", header = T) %>%
+  janitor::clean_names()
+str(data)
+```
+
+```{r}
+data$gender <- factor(data$gender, levels = c("Male", "Female"))
+data$voting_preference <- factor(data$voting_preference, levels = c("Republican", "Democrat", "Independent"))
+levels(data$voting_preference)
+```
+
+
+H0: no difference between gender and voting preference
+H1: Gender and voting preference are dependent
+
+```{r}
+t1 <- table(data$gender, data$voting_preference)
+t1
+```
+
+```{r}
+library(janitor)
+tabyl(data, gender, voting_preference) %>%
+  adorn_totals(c("row", "col"))
+```
+
+$$
+\chi^2 = (200 - 180)^2 / 180 + () 
+$$
+
+```{r}
+barplot(t1,
+  legend.text = T,
+  col = c("red", "blue"),
+  beside = T
+)
+```
+
+H0: gender and voting are independent
+H1: gender and voting are dependent
+
+## Chi-squared test
+
+```{r}
+results <- chisq.test(t1)
+results
+```
+
+Reject the null hypothesis
+
+Expected value
+
+```{r}
+results$expected
+```
+
+# Fisher exact
+
+When sample size less than 5 in one or more cell.
+
+```{r}
+smoking <- c(
+  rep("Smoking", 2), rep("Non-smoking", 7),
+  rep("Smoking", 5), rep("Non-smoking", 1)
+)
+status <- c(rep("Athlete", 9), rep("Non-athlete", 6))
+data <- data.frame(
+  smoking = factor(smoking),
+  status = factor(status)
+)
+str(data)
+```
+
+```{r}
+levels(data$status)
+```
+
+## Contingency table
+
+```{r}
+t2 <- table(data$smoking, data$status)
+t2
+```
+
+```{r}
+fisher.test(t2)
+```
+
+Significant result, reject null hypothesis. Smoking and status are not independent.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
