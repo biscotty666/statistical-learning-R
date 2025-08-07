@@ -1,0 +1,165 @@
+---
+title: "Pearson and Spearman Correlations"
+format: 
+  gfm: 
+    toc: true
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(paged.print = FALSE)
+```
+
+# Pearson correlation
+
+Measures linear statistical association between two continuous variables.
+
+
+Pearson's r:
+
+$$
+r = \frac{Cov(X,Y)}{\sqrt{\text{Var}(X) \cdot \text{Var}(Y)}}
+$$
+
+The range is (-1,1), 1 being strong positive, 0 being no correlation. In order to determine if the number is significant, must test.
+
+H0: $\rho = 0$ variables not associated
+H1: $\rho \ne 0$ variables associated
+
+## Assumptions
+
+1. Variables X and Y are measured at the interval or ratio scales
+2. X and Y are sampled from a normal population
+3. The relationship between the variables is linear
+
+Pre-testing is required.
+
+
+```{r}
+#| message: false
+library(ggpubr)
+```
+
+```{r}
+data <- read.csv("https://raw.githubusercontent.com/DrMollalo/R_Data/refs/heads/main/Arm_Waist.csv", header = T)
+str(data)
+```
+
+> Is there a relationship between waist and arm circumference
+
+## Normality check
+
+```{r}
+library(patchwork)
+ggqqplot(data$WAIST) + ggqqplot(data$ARM.CIRC)
+```
+
+They appear to be normal.
+
+```{r}
+shapiro.test(data$WAIST)
+shapiro.test(data$ARM.CIRC)
+```
+
+Both are normally distributed.
+
+H0: no correlation between waist and arm
+H1: Correlation between waist and arm
+
+## Linear relationship
+
+```{r}
+data <- janitor::clean_names(data)
+names(data)
+ggscatter(data, "waist", "arm_circ",
+  add = "reg.line", conf.int = T,
+  cor.method = "pearson", cor.coef = T
+)
+```
+
+## Pearson's test
+
+```{r}
+cor.test(data$waist, data$arm_circ, method = "pearson")
+```
+
+p-value shows strong correlation.
+
+
+
+# Spearman's Rank Correlation
+
+Non-parametric, measures the association between the ranks of paired observations for two variables. Observations are put on ordinal scales and paired values are compared.
+
+Requires:
+
+1. At least 5 paired observations
+2. Normality
+3. Monotonic relationship between variables
+
+H0: $\rho = 0$ ranked variables not correlated
+H1: $\rho \ne 0$ ranked variables correlated
+
+```{r}
+data("cars")
+str(cars)
+```
+
+## Check normality
+
+```{r}
+ggqqplot(cars$dist)
+```
+
+Does not appear normal.
+
+```{r}
+shapiro.test(cars$dist)
+```
+
+Since p is less than .05, the distribution is not normal. Must use Spearman's Rank.
+
+## Check if monotonic
+
+Relationship must be monotonic.
+
+```{r}
+ggscatter(cars, "speed", "dist",
+  add = "reg.line", cor.method = "spearman",
+  cor.coef = T, conf.int = T
+)
+```
+
+Seems monotonic.
+
+H0: no correlation between ranked speed and ranked distance
+H1: correlation between ranked speed and ranked distance
+
+```{r}
+cor.test(cars$speed, cars$dist, method = "spearman")
+```
+
+```{r}
+cor.test(cars$speed, cars$dist, method = "spearman", exact = F)
+```
+
+The rho value indicates a strong positive correlation, the p-value shows significance.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
