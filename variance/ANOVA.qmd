@@ -1,0 +1,120 @@
+---
+title: "Analysis of Variance"
+format: 
+  gfm: 
+    toc: true
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(paged.print = FALSE)
+```
+
+# Assumptions
+
+- random, indepenendent observations
+- normal distribution
+- homogenity of variance (homoscedasticity)
+
+With large samples, the second and third can be relaxed.
+
+```{r}
+data("PlantGrowth")
+str(PlantGrowth)
+```
+
+```{r}
+levels(PlantGrowth$group)
+```
+
+```{r}
+summary(PlantGrowth)
+```
+
+```{r}
+weight <- PlantGrowth$weight
+group <- PlantGrowth$group
+```
+
+> Compare means and counts
+
+```{r}
+tapply(weight, group, mean)
+```
+
+```{r}
+tapply(weight, group, length)
+```
+
+# Visualize
+
+H0: means are all equal
+Ha: at least one is different
+
+```{r}
+boxplot(weight ~ group)
+```
+
+```{r}
+ggpubr::ggboxplot(PlantGrowth, "group", "weight",
+  fill = "group",
+  palette = c("red", "green", "blue"), title = "Group weights",
+  xlab = "Plant group"
+)
+```
+
+# ANOVA
+
+```{r}
+options(digits = 4)
+result <- aov(weight ~ group)
+result
+```
+
+F-statistic
+
+```{r}
+(3.766 / 2) / (10.492 / 27)
+```
+
+```{r}
+summary(result)
+```
+
+Statistically significant difference between at least two groups. To determine which, use post-hoc tests.
+
+# Post-hoc tests - Tukey's HSD
+
+```{r}
+result_tk <- TukeyHSD(result)
+result_tk
+```
+
+trt1 and trt2 are significantly different at 95% confidence level.
+
+```{r}
+TukeyHSD(result, conf.level = 0.99)
+```
+
+Also at 99% confidence level.
+
+# Test equality of variance
+
+> Bartlett test
+
+H0: all variances are equal
+
+```{r}
+bartlett.test(weight ~ group)
+```
+
+Failure to reject null hypothesis so all variances are equal.
+
+
+
+
+
+
+
+
+
+
