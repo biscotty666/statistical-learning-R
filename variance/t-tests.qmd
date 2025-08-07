@@ -1,0 +1,202 @@
+---
+title: "t-test"
+format: 
+  gfm: 
+    toc: true
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(paged.print = FALSE)
+```
+
+# One-sample t-test
+
+> Is a sample mean significantly different from the population mean?
+
+## Assumptions
+
+- random, independent observations
+- normal distribution
+
+Used when the sample size is small or the standard deviation is unknown.
+
+$$
+t = \frac{\bar{X} - \mu}{\frac{S}{\sqrt{n}}}
+$$
+
+```{r}
+data <- read.csv("https://raw.githubusercontent.com/DrMollalo/R_Data/refs/heads/main/IQ%20(1).csv", header = T)
+head(data)
+```
+
+> Is the average IQ of the sample statistically different from the population?
+
+The average for the population in this case is 95. Can the apparently higher values of the sample be due to random chance?
+
+```{r}
+summary(data)
+```
+
+```{r}
+iq <- data$IQ
+```
+
+H0: no difference between sample mean and population mean
+H1: Sample mean > 95 (population mean)
+
+
+```{r}
+boxplot(iq, ylab = "IQ", las = 2)
+abline(h = 95, col = "red", lwd = 3)
+abline(h = mean(iq), col = "blue", lwd = 3)
+```
+
+## Table method (manual)
+
+```{r}
+t <- (mean(iq) - 95) / (sd(iq) / sqrt(length(iq)))
+t
+```
+
+To find critical value, use lookup table. df = 19, at 95. It is 1.729. The t-stat is greater, so the means are different.
+
+## P-value (R)
+
+```{r}
+result <- t.test(iq, alternative = "greater", mu = 95, conf.level = 0.95)
+result
+```
+
+The p-value shows statistical significance rejecting the null hypothesis.
+
+```{r}
+t.test(iq, alternative = "greater", mu = 95, conf.level = 0.99)
+```
+
+
+# Two-sample unpaired (independent) t-test
+
+Compare the mean of 2 independent groups. Do they come from the same population or not?
+
+Assuming equal variance
+
+
+$$
+t = \frac{\bar{X}_1 - \bar{X}_2}{s_p\sqrt{(1 / n_1) + (1 / n_2)}} \\
+s_p = \frac{(n_1 - 1) \cdot s_1^2 + (n_2 - 1) \cdot s_2^2}{(n_1 + n_2 - 2)} \\
+df = n_1 + n_2 - 2
+$$
+
+```{r}
+data <- read.csv("https://raw.githubusercontent.com/DrMollalo/R_Data/refs/heads/main/04%20-%20Births%20(1).csv", header = T)
+str(data)
+```
+
+```{r}
+gender <- data$GENDER..1.M.
+weight <- data$BIRTH.WEIGHT
+```
+
+```{r}
+boxplot(weight ~ gender, col = c("red", "blue"))
+```
+
+```{r}
+tapply(weight, gender, mean)
+```
+
+Equality of variance
+
+```{r}
+weight_male <- weight[gender == "Male"]
+weight_female <- weight[gender == "Female"]
+var.test(weight_male, weight_female)
+```
+
+The variance is not statistically different.
+
+
+H0: difference of weight is 0
+Ha: difference of weight is not zero
+
+
+```{r}
+t.test(weight_male, weight_female,
+  mu = 0,
+  alternative = "two.sided", conf.level = 0.95
+)
+```
+
+A very low p-value so reject null hypothesis.
+
+Since the variances are equal:
+
+```{r}
+t.test(weight_male, weight_female,
+  mu = 0, var.equal = T,
+  alternative = "two.sided", conf.level = 0.95
+)
+```
+
+Results are nearly identical.
+
+# Paired t-test
+
+For 2 random dependent samples. Difference should follow normal distribution.
+
+```{r}
+data <- read.csv("https://raw.githubusercontent.com/DrMollalo/R_Data/refs/heads/main/Lactic_Acid%20(1).csv", header = T)
+data
+```
+
+```{r}
+boxplot(data$Before, data$After)
+```
+
+
+H0: no differenc in the mean of lactic acid after excercise
+Ha: mean difference > 0
+
+$$
+t = \frac{\bar{d}}{s_d / \sqrt{n}}
+$$
+
+where $\bar{d}$ is the sample mean of the difference, and $S_d$ is the sd of the differences.
+
+## Formula method
+
+```{r}
+diff <- data$After - data$Before
+```
+
+```{r}
+t1 <- mean(diff) / (sd(diff) / sqrt(length(diff)))
+t1
+```
+
+Table lookup gives critical value of 1.822 at 95% confidence. Since the t statistic is greater, the null hypothesis can be rejected.
+
+
+```{r}
+length(diff)
+```
+
+## P-value
+
+```{r}
+t2 <- t.test(data$After, data$Before,
+  alternative = "two.sided",
+  mu = 0, paired = TRUE, conf.level = 0.95
+)
+t2
+```
+
+A very low p-level, can reject the null hypothesis.
+
+```{r}
+t.test(data$After, data$Before,
+  alternative = "greater",
+  mu = 0, paired = TRUE, conf.level = 0.99
+)
+```
+
